@@ -9,6 +9,7 @@ class Note(Base):
 
     id = Column('id', UUID, primary_key=True)
     short_id = Column('shortid', String(length=255), nullable=False)
+    alias = Column('alias', String(length=255))
     title = Column('title', Text)
     content = Column('content', Text)
     created_at = Column('createdAt', Time)

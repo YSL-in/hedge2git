@@ -8,6 +8,8 @@ click = "*"
 python-dotenv = "*"
 sqlalchemy = "*"
 psycopg2 = "*"
+httpx = "*"
+parse = "*"
 
 [dev-packages]
 
