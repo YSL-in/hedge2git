@@ -3,6 +3,8 @@ import typing as t
 
 import click
 
+from hedgedoc import hedgedoc
+
 
 def validate(**actions: t.Mapping) -> None:
     def exit_with_error(msg: str) -> t.NoReturn:
