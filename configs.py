@@ -1,4 +1,18 @@
+import shutil
+from pathlib import Path
+
 from dotenv import dotenv_values
 
-configs: dict[str, str] = dotenv_values()  # type: ignore
-configs['HEDGEDOC_SERVER'] += '/' if not configs['HEDGEDOC_SERVER'].endswith('/') else configs['HEDGEDOC_SERVER']
+configs: dict[str, any] = dotenv_values()  # type: ignore
+
+if not configs['HEDGEDOC_SERVER'].endswith('/'):
+    configs['HEDGEDOC_SERVER'] += '/'
+
+configs['SYNC_PATH'] = sync_path = Path('/tmp/hedge2git')  # noqa: S108
+if sync_path.exists():
+    bak_path = sync_path.with_suffix('.bak')
+    if bak_path.exists():
+        shutil.rmtree(bak_path)
+
+    shutil.move(sync_path, bak_path)
+    sync_path.mkdir()

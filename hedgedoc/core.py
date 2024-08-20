@@ -22,13 +22,13 @@ class Hedgedoc:
         self.session = sessionmaker(bind=engine)()
         self.server = httpx.URL(configs['HEDGEDOC_SERVER'])
 
-    def get_notes(self) -> t.List[Note]:
+    def get_notes(self) -> list[Note]:
         return self.session.query(Note).all()
 
-    def get_users(self) -> t.List[User]:
+    def get_users(self) -> list[User]:
         return self.session.query(User).all()
 
-    def get_ref_id(self, note_id: Column[str]) -> str:
+    def get_ref_id(self, note_id: str | Column[str]) -> str:
         """Return the URL-referenced ID given a Note.short_id or Note.alias."""
         resp = self.send_request(note_id)
         return parse(f'{self.server}{{}}', resp.headers['location'])[0]  # type: ignore
@@ -42,6 +42,10 @@ class Hedgedoc:
             })
             request = client.get if action == 'GET' else client.post
             return request(self.server.join(api))
+
+    @property
+    def tags(self) -> list[str]:
+        """TODO: parse content to extract tags"""
 
 
 hedgedoc = Hedgedoc()
