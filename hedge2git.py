@@ -19,12 +19,6 @@ import _helpers
     default=None, show_default=True,
     help='Push changes.',
 )
-@click.option(
-    '--flatten',
-    is_flag=True,
-    default=False, show_default=True,
-    help='Build hierarchy based on tags.',
-)
 def hedge2git(**actions: t.Mapping):
     """
     Sync hedgedoc via Git registries. Use .env to configure repository, access token, etc.
@@ -35,7 +29,7 @@ def hedge2git(**actions: t.Mapping):
         _helpers.pull(branch)  # type: ignore
 
     if (comment := actions['push']) is not None:
-        _helpers.push(comment, actions['flatten'])  # type: ignore
+        _helpers.push(comment)  # type: ignore
 
 
 if __name__ == '__main__':

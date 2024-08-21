@@ -6,11 +6,12 @@ from sqlalchemy import Column, create_engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import configs
+from utils import exit_with_error
 
 from .models import Note, User
 
 
-class Hedgedoc:
+class HedgedocStore:
     def __init__(self) -> None:
         db_type = configs['DB_TYPE']
         db_user = configs['DB_USER']
@@ -20,13 +21,24 @@ class Hedgedoc:
         db_name = configs['DB_NAME']
         engine = create_engine(f'{db_type}://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}', future=True)
         self.session = sessionmaker(bind=engine)()
-        self.server = httpx.URL(configs['HEDGEDOC_SERVER'])
 
-    def get_notes(self) -> list[Note]:
-        return self.session.query(Note).all()
+    def get_notes(self, owner: User | None = None) -> list[Note]:
+        if owner is None:
+            return self.session.query(Note).all()
+        return self.session.query(Note).filter(Note.owner_id == owner.id).all()
 
     def get_users(self) -> list[User]:
         return self.session.query(User).all()
+
+    def get_current_user(self) -> User:
+        if configs['USER_EMAIL'] is None:
+            exit_with_error('USER_EMAIL is not set')
+        return self.session.query(User).filter(User.email == configs['USER_EMAIL']).first()  # type: ignore
+
+
+class Hedgedoc:
+    def __init__(self) -> None:
+        self.server = configs['HEDGEDOC_SERVER']
 
     def get_ref_id(self, note_id: str | Column[str]) -> str:
         """Return the URL-referenced ID given a Note.short_id or Note.alias."""
@@ -43,9 +55,6 @@ class Hedgedoc:
             request = client.get if action == 'GET' else client.post
             return request(self.server.join(api))
 
-    @property
-    def tags(self) -> list[str]:
-        """TODO: parse content to extract tags"""
 
-
+hedgedoc_store = HedgedocStore()
 hedgedoc = Hedgedoc()

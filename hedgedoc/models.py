@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import UUID, Column, ForeignKey, Integer, String, Text, Time
 from sqlalchemy.orm import DeclarativeBase, declarative_base, relationship
 
@@ -10,7 +12,7 @@ class Note(Base):
     id = Column('id', UUID, primary_key=True)
     short_id = Column('shortid', String(length=255), nullable=False)
     alias = Column('alias', String(length=255))
-    title = Column('title', Text)
+    _title = Column('title', Text)
     content = Column('content', Text)
     created_at = Column('createdAt', Time)
     updated_at = Column('updatedAt', Time)
@@ -27,6 +29,23 @@ class Note(Base):
 
     owner = relationship('User', back_populates='notes', cascade='all')
     authors = relationship('Author', back_populates='note', cascade='all, delete-orphan')
+
+    @property
+    def title(self) -> str:
+        return '' if self._title == 'Untitled' else self._title  # type: ignore
+
+    @property
+    def tags(self) -> list[str]:
+        # TODO: add support for YAML metadata in csv and list syntax
+        content = str(self.content)
+        for row in reversed(content.split('\n')):
+            if row.startswith('###### tags:'):
+                pattern = r'`([^`]*)`'
+                raw_tags = re.split(r'tags:', row, maxsplit=1)[-1]
+                matches = re.findall(pattern, raw_tags)
+                return [tag for tag in matches if tag]
+
+        return []
 
 
 class User(Base):

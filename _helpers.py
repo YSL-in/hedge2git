@@ -1,23 +1,18 @@
-import sys
+import re
 import typing as t
 from functools import reduce
 from pathlib import Path
 
-import click
 from sqlalchemy import Column
 
 from configs import configs
-from hedgedoc.core import hedgedoc
+from hedgedoc.core import hedgedoc_store
+from utils import exit_with_error
 
 
 def validate(**actions: t.Mapping) -> None:
-    def exit_with_error(msg: str) -> t.NoReturn:
-        click.UsageError(msg, click.get_current_context()).show(sys.stderr)
-        exit(1)
-
     if actions['pull'] is not None and actions['push'] is not None:
         exit_with_error("Got both 'pull' and 'push'")
-    pass
 
 
 def pull(branch: str | None) -> None:
@@ -36,13 +31,13 @@ def pull(branch: str | None) -> None:
         return
 
 
-def push(comment: str | None, flatten: bool) -> None:
+def push(comment: str | None) -> None:
     """
     TODO:
     - create the temp repo if not exists
     - pull the latest changes
     - extract the notes from hedgedoc database
-    - add changes to working tree where hierarchy is optionally built according to tags (order matters!)
+    - add changes to working tree where hierarchy is built according to tags
     - commit changes with an optional message
     - push changes
     """
@@ -50,9 +45,14 @@ def push(comment: str | None, flatten: bool) -> None:
         return
 
     sync_path = configs['SYNC_PATH']
-    for note in hedgedoc.get_notes():
+    for note in hedgedoc_store.get_notes(owner=hedgedoc_store.get_current_user()):
+        if not note.content:  # type: ignore
+            continue
+
+        # TODO: add confliction avoidance
         path = reduce(lambda p, part: p / part, note.tags, sync_path)
-        _write_file(path, note.content)
+        name = note.title or re.split(r'\s', note.content, maxsplit=1)[0]  # type: ignore
+        _write_file(path / f'{name}.md', note.content)
 
 
 def _write_file(path: Path, content: str | Column[str]) -> None:
