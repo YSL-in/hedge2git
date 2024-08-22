@@ -1,8 +1,9 @@
-import typing as t
+import json
+from datetime import datetime
 
 import httpx
 from parse import parse
-from sqlalchemy import Column, create_engine
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from configs import configs
@@ -38,22 +39,44 @@ class HedgedocStore:
 
 class Hedgedoc:
     def __init__(self) -> None:
-        self.server = configs['HEDGEDOC_SERVER']
+        self.server = httpx.URL(configs['HEDGEDOC_SERVER'])
+        self.client = httpx.Client()
+        self.client.post(self.server.join('login'), data={
+            'email': configs['USER_EMAIL'],
+            'password': configs['USER_PASSWORD'],
+        })
 
-    def get_ref_id(self, note_id: str | Column[str]) -> str:
+        resp = self.client.get(self.server.join('me'))
+        status = json.loads(resp.text)['status']
+        if status == 'forbidden':
+            exit_with_error('Invalid USER_EMAIL or USER_PASSWORD')
+
+    def get_ref_id(self, note: Note) -> str:
         """Return the URL-referenced ID given a Note.short_id or Note.alias."""
-        resp = self.send_request(note_id)
-        return parse(f'{self.server}{{}}', resp.headers['location'])[0]  # type: ignore
+        return parse(f'{self.server}{{}}', self.GET(note.short_id).headers['location'])[0]  # type: ignore
 
-    def send_request(self, api, action: t.Literal['GET', 'POST'] = 'GET') -> httpx.Response:
-        with httpx.Client() as client:
-            print(f'send request: {self.server.join(api)}')
-            client.post(self.server.join('login'), json={
-                'email': configs['USER_EMAIL'],
-                'password': configs['USER_PASSWORD'],
-            })
-            request = client.get if action == 'GET' else client.post
-            return request(self.server.join(api))
+    def get_history(self) -> list[dict]:
+        return self.GET('history').json()['history']
+
+    def add_history(self, note: Note) -> None:
+        history = self.get_history()
+        history.append({
+            'id': self.get_ref_id(note),
+            'text': note.title,
+            'time': int(datetime.now().timestamp()),
+            'tags': note.tags,
+        })
+        resp = self.POST('history', {'history': history})
+
+    def GET(self, api: str) -> httpx.Response:
+        return self.client.get(self.server.join(api))
+
+    def POST(self, api: str, data: dict = {}) -> httpx.Response:
+        return self.client.post(
+            self.server.join(api),
+            content=json.dumps(data),
+            headers={'Content-Type': 'application/json'},
+        )
 
 
 hedgedoc_store = HedgedocStore()
