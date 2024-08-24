@@ -10,6 +10,7 @@ sqlalchemy = "*"
 psycopg2 = "*"
 httpx = "*"
 parse = "*"
+gitpython = "*"
 
 [dev-packages]
 
