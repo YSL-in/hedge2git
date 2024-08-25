@@ -35,6 +35,15 @@ def pull(branch: str | None) -> None:
     if branch is None:
         return
 
+    sync_path = configs['SYNC_PATH']
+    repo = git.Repo.init(sync_path)
+    origin = repo.create_remote('origin', configs['GIT_REPO'])
+    try:
+        origin.fetch()
+    except git.GitCommandError:
+        exit_with_error(f"Invalid git repository: {configs['GIT_REPO']}")
+    origin.pull()
+
     print(f'{hedgedoc.get_history() = }')
     note: Note = hedgedoc_store.session.query(Note).filter(Note.id == '9d2ed746-5fe1-48c3-8e2f-1c683b6e9bb9').first()
     hedgedoc.add_history(note)
@@ -60,7 +69,10 @@ def push(comment: str | None) -> None:
         origin.fetch()
     except git.GitCommandError:
         exit_with_error(f"Invalid git repository: {configs['GIT_REPO']}")
-    origin.pull()
+
+    ref = configs['GIT_REF']
+    if ref in [r.name.split('/')[-1] for r in repo.remotes.origin.refs]:
+        repo.remotes.origin.pull(ref)
 
     notes = []
     for note in hedgedoc_store.get_notes(owner=hedgedoc_store.get_current_user()):
@@ -68,17 +80,19 @@ def push(comment: str | None) -> None:
             continue
 
         # TODO: add confliction avoidance
-        path = reduce(lambda p, part: p / part, note.tags, sync_path)
+        rel_path = reduce(lambda p, part: p / part, note.tags, Path())
+        abs_path = sync_path / rel_path
         name = note.title or re.split(r'\s', note.content, maxsplit=1)[0]  # type: ignore
-        notes.append(path / f'{name}.md')
-        _write_file(notes[-1], note.content)
+        notes.append(rel_path / f'{name}.md')
+        _write_file(abs_path, note.content)
 
     # TODO: add dry-run mode & show dirty files before committing
-    # TODO: create primary branch if none exists
     author = git.Actor(configs['GIT_USER'], configs['GIT_EMAIL'])
     repo.index.add(notes)
     repo.index.commit(comment, author=author, committer=author)
-    origin.push().raise_if_error()
+    if repo.refs[0] == 'master':
+        repo.heads.master.rename(ref)
+    origin.push(ref).raise_if_error()
 
 
 def _write_file(path: Path, content: str | Column[str]) -> None:
