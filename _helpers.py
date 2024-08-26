@@ -35,7 +35,7 @@ def pull(branch: str | None) -> None:
     if branch is None:
         return
 
-    sync_path = configs['SYNC_PATH']
+    sync_path = configs['LOCAL_REPO']
     repo = git.Repo.init(sync_path)
     origin = repo.create_remote('origin', configs['GIT_REPO'])
     try:
@@ -50,20 +50,12 @@ def pull(branch: str | None) -> None:
 
 
 def push(comment: str | None) -> None:
-    """
-    TODO:
-    v create the temp repo if not exists
-    v pull the latest changes
-    v extract the notes from hedgedoc database
-    v add changes to working tree where hierarchy is built according to tags
-    v commit changes with an optional message
-    v push changes
-    """
+    """Apply changes from Hedgedoc to the Git repository."""
     if comment is None:
         return
 
-    sync_path = configs['SYNC_PATH']
-    repo = git.Repo.init(sync_path)
+    prefix_path = configs['LOCAL_REPO']
+    repo = git.Repo.init(prefix_path)
     origin = repo.create_remote('origin', configs['GIT_REPO'])
     try:
         origin.fetch()
@@ -71,8 +63,8 @@ def push(comment: str | None) -> None:
         exit_with_error(f"Invalid git repository: {configs['GIT_REPO']}")
 
     ref = configs['GIT_REF']
-    if ref in [r.name.split('/')[-1] for r in repo.remotes.origin.refs]:
-        repo.remotes.origin.pull(ref)
+    if ref in [r.name.split('/')[-1] for r in repo.remotes.origin.refs]:  # git fetch origin
+        repo.remotes.origin.pull(ref)                                     # git pull origin GIT_REF
 
     notes = []
     for note in hedgedoc_store.get_notes(owner=hedgedoc_store.get_current_user()):
@@ -80,19 +72,20 @@ def push(comment: str | None) -> None:
             continue
 
         # TODO: add confliction avoidance
-        rel_path = reduce(lambda p, part: p / part, note.tags, Path())
-        abs_path = sync_path / rel_path
+        base_path = reduce(lambda p, part: p / part, note.tags, Path())
+        abs_path = prefix_path / base_path
         name = note.title or re.split(r'\s', note.content, maxsplit=1)[0]  # type: ignore
-        notes.append(rel_path / f'{name}.md')
+        notes.append(base_path / f'{name}.md')
         _write_file(abs_path, note.content)
 
     # TODO: add dry-run mode & show dirty files before committing
     author = git.Actor(configs['GIT_USER'], configs['GIT_EMAIL'])
-    repo.index.add(notes)
-    repo.index.commit(comment, author=author, committer=author)
+    repo.index.add(notes)                                        # git add NOTES
+    repo.index.commit(comment, author=author, committer=author)  # git commit -m COMMENT
+    # TODO: reuse local repo
     if repo.refs[0] == 'master':
-        repo.heads.master.rename(ref)
-    origin.push(ref).raise_if_error()
+        repo.heads.master.rename(ref)                            # git branch -m master GIT_REF
+    origin.push(ref).raise_if_error()                            # git push origin GIT_REF
 
 
 def _write_file(path: Path, content: str | Column[str]) -> None:
