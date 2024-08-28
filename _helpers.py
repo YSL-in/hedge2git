@@ -22,32 +22,20 @@ def validate(**actions: t.Mapping) -> None:
 def pull(branch: str | None) -> None:
     """It should be called each time
     TODO:
-    v create the temp repo if not exists
-    v pull the latest changes
-    - checkout to an orphan branch
-        - remove .git/index
-        - clear all files
-    - extract the notes from hedgedoc database
-    - merge the orphan (--allow-unrelated-history --ff-only)
-        - prompt to continue to solve conflict if any
-    - update the hedgedoc database with the latest notes
-        - add new notes to browsing history
+    v pull the latest changes from the Git repository
+    - traverse the hierarchy built according to the tags
+    - compare against the notes extracted from the Hedgedoc
+        - if GIT_NOTE[i] > HEDGEDOC_NOTE[j]:
+            # TODO: either
+            # - add append mode that keeps HEDGEDOC_NOTE[j++] and make force mode default
+            # - add force mode that deletes HEDGEDOC_NOTE[j++] and make append mode default
+        - if GIT_NOTE[i] < HEDGEDOC_NOTE[j]: add GIT_NOTE[i++] to HEDGEDOC
+        - if GIT_NOTE[i] == HEDGEDOC_NOTE[j]: i++; j++;
     """
     if branch is None:
         return
 
-    sync_path = configs['LOCAL_REPO']
-    repo = git.Repo.init(sync_path)
-    origin = repo.create_remote('origin', configs['GIT_REPO'])
-    try:
-        origin.fetch()
-    except git.GitCommandError:
-        exit_with_error(f"Invalid git repository: {configs['GIT_REPO']}")
-    origin.pull()
-
-    print(f'{hedgedoc.get_history() = }')
-    note: Note = hedgedoc_store.session.query(Note).filter(Note.id == '9d2ed746-5fe1-48c3-8e2f-1c683b6e9bb9').first()
-    hedgedoc.add_history(note)
+    git_helper.pull()
 
 
 def push(comment: str | None) -> None:
