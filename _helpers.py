@@ -8,6 +8,7 @@ import git.types
 from sqlalchemy import Column
 
 from configs import configs
+from git_helper import git_helper
 from hedgedoc import hedgedoc, hedgedoc_store
 from hedgedoc.models import Note
 from utils import exit_with_error
@@ -54,17 +55,7 @@ def push(comment: str | None) -> None:
     if comment is None:
         return
 
-    prefix_path = configs['LOCAL_REPO']
-    repo = git.Repo.init(prefix_path)
-    origin = repo.create_remote('origin', configs['GIT_REPO'])
-    try:
-        origin.fetch()
-    except git.GitCommandError:
-        exit_with_error(f"Invalid git repository: {configs['GIT_REPO']}")
-
-    ref = configs['GIT_REF']
-    if ref in [r.name.split('/')[-1] for r in repo.remotes.origin.refs]:  # git fetch origin
-        repo.remotes.origin.pull(ref)                                     # git pull origin GIT_REF
+    git_helper.pull()
 
     notes = []
     for note in hedgedoc_store.get_notes(owner=hedgedoc_store.get_current_user()):
@@ -72,6 +63,7 @@ def push(comment: str | None) -> None:
             continue
 
         # TODO: add confliction avoidance
+        prefix_path = git_helper.repo_path
         base_path = reduce(lambda p, part: p / part, note.tags, Path())
         abs_path = prefix_path / base_path
         name = note.title or re.split(r'\s', note.content, maxsplit=1)[0]  # type: ignore
@@ -79,13 +71,7 @@ def push(comment: str | None) -> None:
         _write_file(abs_path, note.content)
 
     # TODO: add dry-run mode & show dirty files before committing
-    author = git.Actor(configs['GIT_USER'], configs['GIT_EMAIL'])
-    repo.index.add(notes)                                        # git add NOTES
-    repo.index.commit(comment, author=author, committer=author)  # git commit -m COMMENT
-    # TODO: reuse local repo
-    if repo.refs[0] == 'master':
-        repo.heads.master.rename(ref)                            # git branch -m master GIT_REF
-    origin.push(ref).raise_if_error()                            # git push origin GIT_REF
+    git_helper.push(comment, notes)
 
 
 def _write_file(path: Path, content: str | Column[str]) -> None:
