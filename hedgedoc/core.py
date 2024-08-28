@@ -1,5 +1,7 @@
 import json
+import typing as t
 from datetime import datetime
+from urllib.parse import urlencode
 
 import httpx
 from parse import parse
@@ -55,7 +57,7 @@ class Hedgedoc:
         """Return the URL-referenced ID given a Note.short_id or Note.alias."""
         return parse(f'{self.server}{{}}', self.GET(note.short_id).headers['location'])[0]  # type: ignore
 
-    def get_history(self) -> list[dict]:
+    def get_history(self) -> list[dict[str, t.Any]]:
         return self.GET('history').json()['history']
 
     def add_history(self, note: Note) -> None:
@@ -66,16 +68,17 @@ class Hedgedoc:
             'time': int(datetime.now().timestamp()),
             'tags': note.tags,
         })
-        resp = self.POST('history', {'history': history})
+        resp = self.POST('history', {'history': json.dumps(history)})
+        resp.raise_for_status()
 
     def GET(self, api: str) -> httpx.Response:
         return self.client.get(self.server.join(api))
 
-    def POST(self, api: str, data: dict = {}) -> httpx.Response:
+    def POST(self, api: str, data: dict[str, str]) -> httpx.Response:
         return self.client.post(
             self.server.join(api),
-            content=json.dumps(data),
-            headers={'Content-Type': 'application/json'},
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
+            content=urlencode(data),
         )
 
 
