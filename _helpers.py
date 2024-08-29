@@ -47,19 +47,17 @@ def push(comment: str | None) -> None:
 
     notes = []
     for note in hedgedoc_store.get_notes(owner=hedgedoc_store.get_current_user()):
-        if not note.content:  # type: ignore
+        if not note.title or not note.content:  # type: ignore
             continue
 
         # TODO: add confliction avoidance
-        prefix_path = git_helper.repo_path
-        base_path = reduce(lambda p, part: p / part, note.tags, Path())
-        abs_path = prefix_path / base_path
-        name = note.title or re.split(r'\s', note.content, maxsplit=1)[0]  # type: ignore
-        notes.append(base_path / f'{name}.md')
+        base_path = Path(os.path.sep.join(note.tags)) / f'{note.title}.md'
+        abs_path = git_helper.repo_path / base_path
+        notes.append(base_path)
         _write_file(abs_path, note.content)
 
     # TODO: add dry-run mode & show dirty files before committing
-    git_helper.push(comment, notes)
+    git_helper.push(comment, notes, force=True)
 
 
 def _write_file(path: Path, content: str | Column[str]) -> None:
