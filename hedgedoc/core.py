@@ -1,4 +1,6 @@
 import json
+import pathlib
+import re
 import typing as t
 from datetime import datetime
 from urllib.parse import urlencode
@@ -25,6 +27,14 @@ class HedgedocStore:
         engine = create_engine(f'{db_type}://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}', future=True)
         self.session = sessionmaker(bind=engine)()
 
+    def get_note(self, alias: str) -> Note:
+        return self.session.query(Note).filter(Note.alias == alias).first()  # type: ignore
+
+    def delete_note(self, alias: str) -> None:
+        n_deleted = self.session.query(Note).filter(Note.alias == alias).delete()  # type: ignore
+        if not n_deleted:
+            print(f'warning: Note not found: {alias}')
+
     def get_notes(self, owner: User | None = None) -> list[Note]:
         if owner is None:
             return self.session.query(Note).all()
@@ -39,7 +49,7 @@ class HedgedocStore:
         return self.session.query(User).filter(User.email == configs['USER_EMAIL']).first()  # type: ignore
 
 
-class Hedgedoc:
+class HedgedocAPI:
     def __init__(self) -> None:
         self.server = httpx.URL(configs['HEDGEDOC_SERVER'])
         self.client = httpx.Client()
@@ -57,30 +67,82 @@ class Hedgedoc:
         """Return the URL-referenced ID given a Note.short_id or Note.alias."""
         return parse(f'{self.server}{{}}', self.GET(note.short_id).headers['location'])[0]  # type: ignore
 
+    def add_note(self, content: str, alias: str) -> None:
+        # if not content:
+        #     resp = self.GET('new')
+        # elif not alias:
+        #     resp = self.POST('new', content=content, content_type='text/markdown')
+        resp = self.POST(f'new/{alias}', content=content, content_type='text/markdown')
+        resp.raise_for_status()
+
     def get_history(self) -> list[dict[str, t.Any]]:
         return self.GET('history').json()['history']
 
-    def add_history(self, note: Note) -> None:
-        history = self.get_history()
-        history.append({
-            'id': self.get_ref_id(note),
-            'text': note.title,
-            'time': int(datetime.now().timestamp()),
-            'tags': note.tags,
-        })
-        resp = self.POST('history', {'history': json.dumps(history)})
+    def refresh_history(self, new_notes: list[Note] | None = None) -> None:
+        if new_notes:
+            history = self.get_history()
+            history += [
+                {
+                    'id': self.get_ref_id(note),
+                    'text': note.title,
+                    'time': int(datetime.now().timestamp()),
+                    'tags': note.tags,
+                }
+                for note in new_notes
+            ]
+        else:
+            history = [
+                {
+                    'id': self.get_ref_id(note),
+                    'text': note.title,
+                    'time': int(datetime.now().timestamp()),
+                    'tags': note.tags,
+                }
+                for note in hedgedoc_store.get_notes()
+            ]
+        resp = self.POST(
+            'history',
+            content=urlencode({'history': json.dumps(history)}),
+            content_type='application/x-www-form-urlencoded',
+        )
         resp.raise_for_status()
 
     def GET(self, api: str) -> httpx.Response:
         return self.client.get(self.server.join(api))
 
-    def POST(self, api: str, data: dict[str, str]) -> httpx.Response:
+    def POST(self, api: str, content: str, content_type: str) -> httpx.Response:
         return self.client.post(
             self.server.join(api),
-            headers={'Content-Type': 'application/x-www-form-urlencoded'},
-            content=urlencode(data),
+            content=content,
+            headers={'Content-Type': content_type},
         )
 
 
+class Hedgedoc:
+    def __init__(self) -> None:
+        pass
+
+    def write_notes(self, paths: list[pathlib.Path]) -> None:
+        """Create Hedgedoc notes for a given list of Markdown files."""
+        for path in paths:
+            content = path.read_text(encoding='utf-8')
+            alias = self._get_sanitized_alias(path.name)
+            hedgedoc_api.add_note(content=content, alias=alias)
+
+        current_user = hedgedoc_store.get_current_user()
+        hedgedoc_api.refresh_history(new_notes=hedgedoc_store.get_notes(owner=current_user))
+
+    def erase_notes(self, paths: list[pathlib.Path]) -> None:
+        for path in paths:
+            alias = self._get_sanitized_alias(path.name)
+            hedgedoc_store.delete_note(alias)
+
+        hedgedoc_api.refresh_history(new_notes=None)
+
+    def _get_sanitized_alias(self, fname: str) -> str:
+        return re.sub(r'[^a-zA-Z0-9]+', '-', fname).lower()
+
+
 hedgedoc_store = HedgedocStore()
+hedgedoc_api = HedgedocAPI()
 hedgedoc = Hedgedoc()

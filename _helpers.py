@@ -1,16 +1,11 @@
-import re
+import os.path
 import typing as t
-from functools import reduce
 from pathlib import Path
 
-import git
-import git.types
 from sqlalchemy import Column
 
-from configs import configs
 from git_helper import git_helper
 from hedgedoc import hedgedoc, hedgedoc_store
-from hedgedoc.models import Note
 from utils import exit_with_error
 
 
@@ -20,22 +15,45 @@ def validate(**actions: t.Mapping) -> None:
 
 
 def pull(branch: str | None) -> None:
-    """It should be called each time
-    TODO:
-    v pull the latest changes from the Git repository
-    - traverse the hierarchy built according to the tags
-    - compare against the notes extracted from the Hedgedoc
-        - if GIT_NOTE[i] > HEDGEDOC_NOTE[j]:
-            # TODO: either
-            # - add append mode that keeps HEDGEDOC_NOTE[j++] and make force mode default
-            # - add force mode that deletes HEDGEDOC_NOTE[j++] and make append mode default
-        - if GIT_NOTE[i] < HEDGEDOC_NOTE[j]: add GIT_NOTE[i++] to HEDGEDOC
-        - if GIT_NOTE[i] == HEDGEDOC_NOTE[j]: i++; j++;
-    """
+    """Update Hedgedoc notes from the Git repository."""
+    # TODO: remove branch as a pull argument and add append mode as a mutually exclusive argument
     if branch is None:
         return
 
     git_helper.pull()
+
+    git_notes = []
+    for path in git_helper.repo_path.rglob('*.md'):
+        git_notes.append(path.relative_to(git_helper.repo_path))
+
+    hedgedoc_notes = []
+    for note in hedgedoc_store.get_notes(owner=hedgedoc_store.get_current_user()):
+        hedgedoc_notes.append(Path('/'.join(note.tags)) / note.title)
+
+    i = j = 0
+    new_notes = []
+    deprecated_notes = []
+    while i < len(git_notes) and j < len(git_notes):
+        if git_notes[i] < hedgedoc_notes[j]:
+            new_notes.append(git_notes[i])
+            i += 1
+        elif git_notes[i] > hedgedoc_notes[j]:
+            deprecated_notes.append(hedgedoc_notes[j])
+            j += 1
+        else:
+            i += 1
+            j += 1
+
+    while i < len(git_notes):
+        new_notes.append(git_notes[i])
+        i += 1
+
+    while j < len(hedgedoc_notes):
+        deprecated_notes.append(hedgedoc_notes[j])
+        j += 1
+
+    hedgedoc.write_notes(new_notes)
+    hedgedoc.erase_notes(deprecated_notes)
 
 
 def push(comment: str | None) -> None:
@@ -62,4 +80,4 @@ def push(comment: str | None) -> None:
 
 def _write_file(path: Path, content: str | Column[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(str(content))
+    path.write_text(str(content), encoding='utf-8')
