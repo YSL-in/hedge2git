@@ -4,7 +4,7 @@ from pathlib import Path
 from sqlalchemy import Column
 
 from git_helper import git_helper
-from hedgedoc import hedgedoc, hedgedoc_store
+from hedgedoc import erase_notes, hedgedoc, write_notes
 from utils import exit_with_error
 
 
@@ -23,7 +23,7 @@ def pull(pull_type: str) -> None:
         git_notes.append(path.relative_to(git_helper.repo_path))
 
     hedgedoc_notes = []
-    for note in hedgedoc_store.get_notes(owner=hedgedoc_store.get_current_user()):
+    for note in hedgedoc.get_notes(owner=hedgedoc.get_current_user()):
         hedgedoc_notes.append(Path('/'.join(note.tags)) / note.title)
 
     i = j = 0
@@ -48,8 +48,8 @@ def pull(pull_type: str) -> None:
         deprecated_notes.append(hedgedoc_notes[j])
         j += 1
 
-    hedgedoc.write_notes(new_notes)
-    hedgedoc.erase_notes(deprecated_notes)
+    write_notes(new_notes)
+    erase_notes(deprecated_notes)
 
 
 def push(comment: str | None) -> None:
@@ -60,7 +60,7 @@ def push(comment: str | None) -> None:
     git_helper.pull()
 
     notes = []
-    for note in hedgedoc_store.get_notes(owner=hedgedoc_store.get_current_user()):
+    for note in hedgedoc.get_notes(owner=hedgedoc.get_current_user()):
         if not note.title or not note.content:  # type: ignore
             continue
 
