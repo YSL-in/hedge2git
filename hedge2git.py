@@ -1,4 +1,3 @@
-import typing as t
 from datetime import datetime
 
 import click
@@ -8,10 +7,15 @@ import _helpers
 
 @click.command()
 @click.option(
-    '--pull', '--download', 'pull', metavar='BRANCH', type=str,
-    is_flag=False, flag_value='main',  # TODO: make it configurable
-    default=None, show_default=False,
-    help='Pull the latest changes.',
+    '--pull', '--download', 'pull',
+    is_flag=True, default=False, show_default=True,
+    help='Fetch and merge the latest changes.',
+)
+@click.option(
+    '--pull-type', '--download-type', metavar='TYPE',
+    type=click.Choice(['append', 'overwrite'], case_sensitive=False),
+    default='append', show_default=True,
+    help='Choose the pulling type: append, overwrite.',
 )
 @click.option(
     '--push', '--upload', 'push', metavar='COMMENT',
@@ -19,14 +23,14 @@ import _helpers
     default=None, show_default=True,
     help='Push changes.',
 )
-def hedge2git(**actions: t.Mapping):
+def hedge2git(**actions: str):
     """
     Sync hedgedoc via Git registries. Use .env to configure repository, access token, etc.
     """
     _helpers.validate(**actions)
 
-    if (branch := actions['pull']) is not None:
-        _helpers.pull(branch)  # type: ignore
+    if actions['pull']:
+        _helpers.pull(actions['pull_type'])
 
     if (comment := actions['push']) is not None:
         _helpers.push(comment)  # type: ignore

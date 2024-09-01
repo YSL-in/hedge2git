@@ -1,5 +1,4 @@
 import os.path
-import typing as t
 from pathlib import Path
 
 from sqlalchemy import Column
@@ -9,17 +8,14 @@ from hedgedoc import hedgedoc, hedgedoc_store
 from utils import exit_with_error
 
 
-def validate(**actions: t.Mapping) -> None:
+def validate(**actions: str) -> None:
     if actions['pull'] is not None and actions['push'] is not None:
         exit_with_error("Got both 'pull' and 'push'")
 
 
-def pull(branch: str | None) -> None:
+def pull(pull_type: str) -> None:
     """Update Hedgedoc notes from the Git repository."""
-    # TODO: remove branch as a pull argument and add append mode as a mutually exclusive argument
-    if branch is None:
-        return
-
+    # TODO: add pull_type=replace
     git_helper.pull()
 
     git_notes = []
