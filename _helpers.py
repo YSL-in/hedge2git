@@ -8,8 +8,8 @@ from hedgedoc import erase_notes, hedgedoc, write_notes
 from utils import exit_with_error
 
 
-def validate(**actions: str) -> None:
-    if actions['pull'] is not None and actions['push'] is not None:
+def validate(**actions: str | bool | None) -> None:
+    if actions['pull'] and actions['push'] is not None:
         exit_with_error("Got both 'pull' and 'push'")
 
 
