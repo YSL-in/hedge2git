@@ -62,6 +62,9 @@ class HedgedocAPI:
 
 
 class Hedgedoc(HedgedocAPI, HedgedocStore):
+    def __init__(self) -> None:
+        HedgedocAPI.__init__(self)
+        HedgedocStore.__init__(self)
 
     # operations for Hedgedoc notes
     def get_notes(self, owner: User | None = None) -> list[Note]:
