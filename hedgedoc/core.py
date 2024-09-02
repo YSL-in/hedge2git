@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from configs import configs
 from utils import exit_with_error
 
-from .models import Note, User
+from .models import Note, T_Base, User
 
 
 class HedgedocStore:
@@ -24,6 +24,16 @@ class HedgedocStore:
         db_name = configs['DB_NAME']
         engine = create_engine(f'{db_type}://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}', future=True)
         self.session = sessionmaker(bind=engine)()
+
+    def get_or_create(self, model: type[T_Base], defaults: dict = {}, **kwargs) -> tuple[T_Base, bool]:
+        obj = self.session.query(model).filter_by(**kwargs).first()
+        if obj:
+            return obj, False
+
+        obj = model(**kwargs, **defaults)
+        self.session.add(obj)
+        self.session.commit()
+        return obj, True
 
 
 class HedgedocAPI:
@@ -67,8 +77,18 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
         #     resp = self.GET('new')
         # elif not alias:
         #     resp = self.POST('new', content=content, content_type='text/markdown')
-        resp = self.POST(f'new/{alias}', content=content, content_type='text/markdown')
-        resp.raise_for_status()
+        # else:
+        # resp = self.POST(f'new/{alias}', content=content, content_type='text/markdown')
+        # resp.raise_for_status()
+        note = {
+            'short_id': alias,
+            'alias': alias,
+        }
+        self.get_or_create(Note, **note, defaults={
+            'content': content,
+            'created_time': datetime.now().timestamp(),
+            'owner_id': hedgedoc.get_current_user().id,
+        })
 
     def delete_note(self, alias: str) -> None:
         n_deleted = self.session.query(Note).filter(Note.alias == alias).delete()  # type: ignore

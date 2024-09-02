@@ -1,9 +1,11 @@
 import re
+import typing as t
 
 from sqlalchemy import UUID, Column, ForeignKey, Integer, String, Text, Time
 from sqlalchemy.orm import DeclarativeBase, declarative_base, relationship
 
 Base: type[DeclarativeBase] = declarative_base()
+T_Base = t.TypeVar('T_Base', bound=DeclarativeBase)
 
 
 class Note(Base):
@@ -32,6 +34,7 @@ class Note(Base):
 
     @property
     def title(self) -> str:
+        # TODO: parse title and assign it back
         return '' if self._title == 'Untitled' else self._title  # type: ignore
 
     @property
