@@ -11,8 +11,10 @@ psycopg2 = "*"
 httpx = "*"
 parse = "*"
 gitpython = "*"
+pyyaml = "*"
 
 [dev-packages]
+pytest = "*"
 
 [requires]
 python_version = "3.12"

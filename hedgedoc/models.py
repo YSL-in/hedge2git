@@ -1,8 +1,9 @@
-import re
 import typing as t
 
 from sqlalchemy import UUID, Column, ForeignKey, Integer, String, Text, Time
 from sqlalchemy.orm import DeclarativeBase, declarative_base, relationship
+
+from . import get_tags
 
 Base: type[DeclarativeBase] = declarative_base()
 T_Base = t.TypeVar('T_Base', bound=DeclarativeBase)
@@ -39,16 +40,7 @@ class Note(Base):
 
     @property
     def tags(self) -> list[str]:
-        # TODO: add support for YAML metadata in csv and list syntax
-        content = str(self.content)
-        for row in reversed(content.split('\n')):
-            if row.startswith('###### tags:'):
-                pattern = r'`([^`]*)`'
-                raw_tags = re.split(r'tags:', row, maxsplit=1)[-1]
-                matches = re.findall(pattern, raw_tags)
-                return [tag for tag in matches if tag]
-
-        return []
+        return get_tags(self.content)  # type: ignore
 
 
 class User(Base):

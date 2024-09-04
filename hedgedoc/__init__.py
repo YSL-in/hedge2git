@@ -25,3 +25,13 @@ def erase_notes(paths: list[pathlib.Path]) -> None:
 
 def _get_sanitized_alias(fname: str) -> str:
     return re.sub(r'[^a-zA-Z0-9]+', '-', fname).lower()
+
+
+def get_tags(content: str) -> list[str]:
+    """Extract tags from a Markdown content."""
+    tags = []
+    template = r'`([^`]*)`'
+    for line in content.split('\n'):
+        if raw_tags := line.partition('###### tags')[-1]:
+            tags += [tag for tag in re.findall(template, raw_tags) if tag]
+    return tags
