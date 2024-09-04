@@ -4,7 +4,7 @@ import re
 from .core import hedgedoc
 
 
-def write_notes(paths: list[pathlib.Path]) -> None:
+def write_notes(paths: list[pathlib.Path], dry_run: bool) -> None:
     """Create Hedgedoc notes for a given list of Markdown files."""
     for path in paths:
         content = path.read_text(encoding='utf-8')
@@ -15,7 +15,7 @@ def write_notes(paths: list[pathlib.Path]) -> None:
     hedgedoc.refresh_history(new_notes=hedgedoc.get_notes(owner=current_user))
 
 
-def erase_notes(paths: list[pathlib.Path]) -> None:
+def erase_notes(paths: list[pathlib.Path], dry_run: bool) -> None:
     for path in paths:
         alias = _get_sanitized_alias(path.name)
         hedgedoc.delete_note(alias)
@@ -25,13 +25,3 @@ def erase_notes(paths: list[pathlib.Path]) -> None:
 
 def _get_sanitized_alias(fname: str) -> str:
     return re.sub(r'[^a-zA-Z0-9]+', '-', fname).lower()
-
-
-def get_tags(content: str) -> list[str]:
-    """Extract tags from a Markdown content."""
-    tags = []
-    template = r'`([^`]*)`'
-    for line in content.split('\n'):
-        if raw_tags := line.partition('###### tags')[-1]:
-            tags += [tag for tag in re.findall(template, raw_tags) if tag]
-    return tags

@@ -1,9 +1,11 @@
+import csv
+import re
 import typing as t
+from itertools import chain
 
+import yaml
 from sqlalchemy import UUID, Column, ForeignKey, Integer, String, Text, Time
 from sqlalchemy.orm import DeclarativeBase, declarative_base, relationship
-
-from . import get_tags
 
 Base: type[DeclarativeBase] = declarative_base()
 T_Base = t.TypeVar('T_Base', bound=DeclarativeBase)
@@ -40,7 +42,58 @@ class Note(Base):
 
     @property
     def tags(self) -> list[str]:
-        return get_tags(self.content)  # type: ignore
+        return Note.get_tags(self.content)  # type: ignore
+
+    @staticmethod
+    def get_title(content: str) -> str:
+        """Extract title from a markdown content."""
+        if title := Note.get_meta(content).get('title'):
+            return title.strip()  # type: ignore
+
+        prev = ''
+        template = r'^ *=+$'
+        for line in content.split('\n'):
+            if re.findall(template, line) and prev:
+                return prev.strip()  # type: ignore
+            prev = line
+        return 'Untitled'
+
+    @staticmethod
+    def get_tags(content: str) -> list[str]:
+        """Extract tags from a Markdown content."""
+        if tags := Note.get_meta(content).get('tags'):
+            return (
+                [tag.strip() for tag in tags]
+                if isinstance(tags, list)
+                else [tag.strip() for tag in chain(*csv.reader([tags]))]
+            )
+
+        tags = []
+        template = r'`([^`]*)`'
+        for line in content.split('\n'):
+            if raw_tags := line.partition('###### tags')[-1]:
+                tags += [tag for tag in re.findall(template, raw_tags) if tag]
+        return [tag.strip() for tag in dict.fromkeys(tags)]
+
+    @staticmethod
+    def get_meta(content: str) -> dict[str, str | list[str]]:
+        """Extract YAML metadata from a Markdown content."""
+        if not content.startswith('---'):
+            return {}
+
+        raw_meta = ''
+        for line in content.split('\n')[1:]:
+            if not line:
+                continue
+            if line.startswith('---'):
+                break
+            raw_meta += line + '\n'
+
+        try:
+            meta = yaml.safe_load(raw_meta)
+        except yaml.YAMLError:
+            return {}
+        return meta if isinstance(meta, dict) else {}
 
 
 class User(Base):

@@ -41,14 +41,9 @@ class HedgedocAPI:
         self.server = httpx.URL(configs['HEDGEDOC_SERVER'])
         self.client = httpx.Client()
         self.client.post(self.server.join('login'), data={
-            'email': configs['USER_EMAIL'],
-            'password': configs['USER_PASSWORD'],
+            'email': configs['HEDGEDOC_USER_EMAIL'],
+            'password': configs['HEDGEDOC_USER_PASSWORD'],
         })
-
-        resp = self.client.get(self.server.join('me'))
-        status = json.loads(resp.text)['status']
-        if status == 'forbidden':
-            exit_with_error('Invalid USER_EMAIL or USER_PASSWORD')
 
     def GET(self, api: str) -> httpx.Response:
         return self.client.get(self.server.join(api))

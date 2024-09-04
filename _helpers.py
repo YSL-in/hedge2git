@@ -1,3 +1,4 @@
+import json
 import os.path
 from pathlib import Path
 
@@ -9,6 +10,11 @@ from utils import exit_with_error
 
 
 def validate(**actions: str | bool | None) -> None:
+    resp = hedgedoc.GET('me')
+    status = json.loads(resp.text)['status']
+    if status == 'forbidden':
+        exit_with_error('Invalid email or password')
+
     if actions['pull'] and actions['push'] is not None:
         exit_with_error("Got both 'pull' and 'push'")
 
