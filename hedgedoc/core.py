@@ -112,6 +112,7 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
         return self.session.query(User).filter(User.email == configs['HEDGEDOC_USER_EMAIL']).first()  # type: ignore
 
     def refresh_alias(self, notes: list[Note] | None = None, dry_run: bool = False):
+        """Re-alias notes based on their tags and title."""
         notes = notes or self.get_notes()
         print('Re-aliasing notes...')
         for note in notes:
@@ -129,6 +130,7 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
             self.refresh_history()
 
     def refresh_history(self, new_notes: list[Note] | None = None) -> None:
+        """Refresh the browsing history based on the database."""
         history = [] if new_notes else self.get_history()
         history += [
             {

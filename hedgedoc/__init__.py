@@ -20,6 +20,7 @@ def create_notes(paths: list[pathlib.Path], dry_run: bool) -> None:
 
 
 def delete_notes(notes: list[Note], dry_run: bool) -> None:
+    """Delete Hedgedoc notes from the database."""
     print('Deleting notes...')
     for note in notes:
         print(f'\t{note.title} ({note.alias})')
@@ -27,4 +28,4 @@ def delete_notes(notes: list[Note], dry_run: bool) -> None:
             hedgedoc.session.delete(note)
 
     if not dry_run:
-        hedgedoc.refresh_history(new_notes=None)
+        hedgedoc.refresh_history()

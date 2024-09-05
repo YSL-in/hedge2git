@@ -22,6 +22,7 @@ class GitHelper:
             exit_with_error(f'Invalid git repository: {self.repo}')
 
     def pull(self):
+        """Run `git pull origin GIT_REF`"""
         if self.ref in [r.name.split('/')[-1] for r in self.git_remote.refs]:
             self.git_remote.pull(self.ref)  # git pull origin GIT_REF
 

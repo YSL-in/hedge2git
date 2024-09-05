@@ -21,6 +21,7 @@ def pull(pull_type: str, dry_run: bool) -> None:
     """Update Hedgedoc notes from the Git repository."""
     git_helper.pull()
 
+    # fetch remote notes
     git_notes = []
     for path in git_helper.repo_path.rglob('*.md'):
         git_notes.append(path)
@@ -29,11 +30,13 @@ def pull(pull_type: str, dry_run: bool) -> None:
     def gen_path(note: Note):
         return git_helper.repo_path / os.path.sep.join(note.tags) / f'{note.title}.md'
 
+    # collect local notes (without writing them)
     hedgedoc_notes = []
     for note in hedgedoc.get_notes(owner=hedgedoc.get_current_user()):
         hedgedoc_notes.append(note)
     hedgedoc_notes.sort(key=lambda note: gen_path(note))
 
+    # compare notes
     i = j = 0
     new_notes: list[Path] = []
     deprecated_notes: list[Note] = []
@@ -57,6 +60,7 @@ def pull(pull_type: str, dry_run: bool) -> None:
         deprecated_notes.append(hedgedoc_notes[j])
         j += 1
 
+    # sync notes
     create_notes(new_notes, dry_run)
     if pull_type == 'overwrite':
         delete_notes(deprecated_notes, dry_run)
