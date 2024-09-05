@@ -64,6 +64,7 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
 
     # operations for Hedgedoc notes
     def get_notes(self, owner: User | None = None) -> list[Note]:
+        """Return a list of notes for a given user which default to the current logged-in user."""
         if owner is None:
             return self.session.query(Note).all()
         return self.session.query(Note).filter(Note.owner_id == owner.id).all()
@@ -110,7 +111,7 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
             exit_with_error('HEDGEDOC_USER_EMAIL is not set')
         return self.session.query(User).filter(User.email == configs['HEDGEDOC_USER_EMAIL']).first()  # type: ignore
 
-    def refresh_alias(self, notes: list[Note], dry_run: bool):
+    def refresh_alias(self, notes: list[Note] | None = None, dry_run: bool = False):
         notes = notes or self.get_notes()
         print('Re-aliasing notes...')
         for note in notes:

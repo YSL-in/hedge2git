@@ -2,10 +2,8 @@ import json
 import os.path
 from pathlib import Path
 
-from sqlalchemy import Column
-
 from git_helper import git_helper
-from hedgedoc import Note, erase_notes, hedgedoc, write_notes
+from hedgedoc import Note, create_notes, delete_notes, hedgedoc
 from utils import exit_with_error
 
 
@@ -59,9 +57,9 @@ def pull(pull_type: str, dry_run: bool) -> None:
         deprecated_notes.append(hedgedoc_notes[j])
         j += 1
 
-    write_notes(new_notes, dry_run)
+    create_notes(new_notes, dry_run)
     if pull_type == 'overwrite':
-        erase_notes(deprecated_notes, dry_run)
+        delete_notes(deprecated_notes, dry_run)
     else:
         hedgedoc.refresh_alias(deprecated_notes, dry_run)
 
@@ -72,22 +70,21 @@ def push(comment: str | None, dry_run: bool) -> None:
         return
 
     git_helper.pull()
+    hedgedoc.refresh_alias(dry_run=dry_run)
 
     notes = []
+    print('Uploading notes...')
     for note in hedgedoc.get_notes(owner=hedgedoc.get_current_user()):
         if not note.title or not note.content:  # type: ignore
             continue
 
-        # TODO: add confliction avoidance
         base_path = Path(os.path.sep.join(note.tags)) / f'{note.title}.md'
-        abs_path = git_helper.repo_path / base_path
         notes.append(base_path)
-        _write_file(abs_path, note.content)
 
-    # TODO: add dry-run mode & show dirty files before committing
+        print(f'\t{note.title} ({note.alias})')
+        if not dry_run:
+            abs_path = git_helper.repo_path / base_path
+            abs_path.parent.mkdir(parents=True, exist_ok=True)
+            abs_path.write_text(str(note.content), encoding='utf-8')
+
     git_helper.push(comment, notes, force=True)
-
-
-def _write_file(path: Path, content: str | Column[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(str(content), encoding='utf-8')
