@@ -23,17 +23,21 @@ import _helpers
     default=None, show_default=True,
     help='Push changes.',
 )
-def hedge2git(**actions: str):
+@click.option(
+    '--dry-run', 'dry_run', is_flag=True,
+    help='Show the files to be pulled/pushed without actually pulling/pushing them.',
+)
+def hedge2git(**actions: str | bool):
     """
     Sync hedgedoc via Git registries. Use .env to configure repository, access token, etc.
     """
     _helpers.validate(**actions)
 
     if actions['pull']:
-        _helpers.pull(actions['pull_type'])
+        _helpers.pull(actions['pull_type'], dry_run=actions['dry_run'])  # type: ignore
 
     if (comment := actions['push']) is not None:
-        _helpers.push(comment)  # type: ignore
+        _helpers.push(comment, dry_run=actions['dry_run'])  # type: ignore
 
 
 if __name__ == '__main__':

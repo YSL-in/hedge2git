@@ -45,6 +45,17 @@ class Note(Base):
         return Note.get_tags(self.content)  # type: ignore
 
     @staticmethod
+    def get_alias(*, title: str = '', tags: list[str] = [], content: str = '') -> str:
+        """Generate a unique alias for a note."""
+        def _get_sanitized_alias(fname: str) -> str:
+            # include the chinese charsets
+            return re.sub(r'[^a-zA-Z0-9\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+', '-', fname).lower()
+
+        tags = tags or Note.get_tags(content)
+        title = title or Note.get_title(content)
+        return '--'.join(_get_sanitized_alias(t) for t in [*tags, title])
+
+    @staticmethod
     def get_title(content: str) -> str:
         """Extract title from a markdown content."""
         if title := Note.get_meta(content).get('title'):

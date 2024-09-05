@@ -1,5 +1,6 @@
 import json
 import typing as t
+import uuid
 from datetime import datetime
 from urllib.parse import urlencode
 
@@ -70,7 +71,7 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
     def get_note(self, alias: str) -> Note:
         return self.session.query(Note).filter(Note.alias == alias).first()  # type: ignore
 
-    def add_note(self, content: str, alias: str) -> None:
+    def add_note(self, title: str, content: str, alias: str) -> None:
         # if not content:
         #     resp = self.GET('new')
         # elif not alias:
@@ -83,18 +84,17 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
             'alias': alias,
         }
         self.get_or_create(Note, **note, defaults={
+            'id': uuid.uuid4(),
+            '_title': title,
             'content': content,
-            'created_time': datetime.now().timestamp(),
+            'created_at': datetime.now(),
             'owner_id': hedgedoc.get_current_user().id,
         })
 
-    def delete_note(self, alias: str) -> None:
-        n_deleted = self.session.query(Note).filter(Note.alias == alias).delete()  # type: ignore
-        if not n_deleted:
-            print(f'warning: Note not found: {alias}')
-
     def get_ref_id(self, note: Note) -> str:
         """Return the URL-referenced ID given a Note.short_id or Note.alias."""
+        if note.alias is not None:
+            return note.alias  # type: ignore
         return parse(f'{self.server}{{}}', self.GET(note.short_id).headers['location'])[0]  # type: ignore
 
     # operations for Hedgedoc history

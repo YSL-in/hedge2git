@@ -5,7 +5,7 @@ from pathlib import Path
 from sqlalchemy import Column
 
 from git_helper import git_helper
-from hedgedoc import erase_notes, hedgedoc, write_notes
+from hedgedoc import Note, erase_notes, hedgedoc, write_notes
 from utils import exit_with_error
 
 
@@ -19,27 +19,32 @@ def validate(**actions: str | bool | None) -> None:
         exit_with_error("Got both 'pull' and 'push'")
 
 
-def pull(pull_type: str) -> None:
+def pull(pull_type: str, dry_run: bool) -> None:
     """Update Hedgedoc notes from the Git repository."""
-    # TODO: add pull_type=replace
     git_helper.pull()
 
     git_notes = []
     for path in git_helper.repo_path.rglob('*.md'):
-        git_notes.append(path.relative_to(git_helper.repo_path))
+        git_notes.append(path)
+    git_notes.sort()
+
+    def gen_path(note: Note):
+        return git_helper.repo_path / os.path.sep.join(note.tags) / f'{note.title}.md'
 
     hedgedoc_notes = []
     for note in hedgedoc.get_notes(owner=hedgedoc.get_current_user()):
-        hedgedoc_notes.append(Path('/'.join(note.tags)) / note.title)
+        hedgedoc_notes.append(note)
+    hedgedoc_notes.sort(key=lambda note: gen_path(note))
 
     i = j = 0
-    new_notes = []
-    deprecated_notes = []
-    while i < len(git_notes) and j < len(git_notes):
-        if git_notes[i] < hedgedoc_notes[j]:
+    new_notes: list[Path] = []
+    deprecated_notes: list[Note] = []
+    while i < len(git_notes) and j < len(hedgedoc_notes):
+        hedgedoc_note = gen_path(hedgedoc_notes[j])
+        if git_notes[i] < hedgedoc_note:
             new_notes.append(git_notes[i])
             i += 1
-        elif git_notes[i] > hedgedoc_notes[j]:
+        elif git_notes[i] > hedgedoc_note:
             deprecated_notes.append(hedgedoc_notes[j])
             j += 1
         else:
@@ -54,11 +59,12 @@ def pull(pull_type: str) -> None:
         deprecated_notes.append(hedgedoc_notes[j])
         j += 1
 
-    write_notes(new_notes)
-    erase_notes(deprecated_notes)
+    write_notes(new_notes, dry_run)
+    if pull_type == 'overwrite':
+        erase_notes(deprecated_notes, dry_run)
 
 
-def push(comment: str | None) -> None:
+def push(comment: str | None, dry_run: bool) -> None:
     """Apply changes from Hedgedoc to the Git repository."""
     if comment is None:
         return
