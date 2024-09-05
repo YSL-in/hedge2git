@@ -101,35 +101,6 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
     def get_history(self) -> list[dict[str, t.Any]]:
         return self.GET('history').json()['history']
 
-    def refresh_history(self, new_notes: list[Note] | None = None) -> None:
-        if new_notes:
-            history = self.get_history()
-            history += [
-                {
-                    'id': self.get_ref_id(note),
-                    'text': note.title,
-                    'time': int(datetime.now().timestamp()),
-                    'tags': note.tags,
-                }
-                for note in new_notes
-            ]
-        else:
-            history = [
-                {
-                    'id': self.get_ref_id(note),
-                    'text': note.title,
-                    'time': int(datetime.now().timestamp()),
-                    'tags': note.tags,
-                }
-                for note in self.get_notes()
-            ]
-        resp = self.POST(
-            'history',
-            content=urlencode({'history': json.dumps(history)}),
-            content_type='application/x-www-form-urlencoded',
-        )
-        resp.raise_for_status()
-
     # operations for Hedgedoc users
     def get_users(self) -> list[User]:
         return self.session.query(User).all()
@@ -138,6 +109,41 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
         if configs['HEDGEDOC_USER_EMAIL'] is None:
             exit_with_error('HEDGEDOC_USER_EMAIL is not set')
         return self.session.query(User).filter(User.email == configs['HEDGEDOC_USER_EMAIL']).first()  # type: ignore
+
+    def refresh_alias(self, notes: list[Note], dry_run: bool):
+        notes = notes or self.get_notes()
+        print('Re-aliasing notes...')
+        for note in notes:
+            alias = Note.get_alias(title=note.title, tags=note.tags)
+            if alias == note.alias:
+                continue
+
+            print(f'\t{note.title} ({note.alias} -> {alias})')
+            if not dry_run:
+                note.alias = alias  # type: ignore
+                note.short_id = alias  # type: ignore
+                self.session.commit()
+
+        if not dry_run:
+            self.refresh_history()
+
+    def refresh_history(self, new_notes: list[Note] | None = None) -> None:
+        history = [] if new_notes else self.get_history()
+        history += [
+            {
+                'id': self.get_ref_id(note),
+                'text': note.title,
+                'time': int(datetime.now().timestamp()),
+                'tags': note.tags,
+            }
+            for note in (new_notes or self.get_notes())
+        ]
+        resp = self.POST(
+            'history',
+            content=urlencode({'history': json.dumps(history)}),
+            content_type='application/x-www-form-urlencoded',
+        )
+        resp.raise_for_status()
 
 
 hedgedoc = Hedgedoc()

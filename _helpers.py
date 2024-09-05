@@ -62,6 +62,8 @@ def pull(pull_type: str, dry_run: bool) -> None:
     write_notes(new_notes, dry_run)
     if pull_type == 'overwrite':
         erase_notes(deprecated_notes, dry_run)
+    else:
+        hedgedoc.refresh_alias(deprecated_notes, dry_run)
 
 
 def push(comment: str | None, dry_run: bool) -> None:
