@@ -1,14 +1,25 @@
 import csv
 import re
 import typing as t
+from enum import StrEnum
 from itertools import chain
 
 import yaml
-from sqlalchemy import UUID, Column, ForeignKey, Integer, String, Text, Time
+from sqlalchemy import (UUID, Column, Enum, ForeignKey, Integer, String, Text,
+                        Time)
 from sqlalchemy.orm import DeclarativeBase, declarative_base, relationship
 
 Base: type[DeclarativeBase] = declarative_base()
 T_Base = t.TypeVar('T_Base', bound=DeclarativeBase)
+
+
+class NotePermissionEnum(StrEnum):
+    freely = 'freely'
+    editable = 'editable'
+    limited = 'limited'
+    locked = 'locked'
+    protected = 'protected'
+    private = 'private'
 
 
 class Note(Base):
@@ -27,7 +38,7 @@ class Note(Base):
     view_count = Column('viewcount', Integer)
 
     owner_id = Column('ownerId', UUID)
-    # permission = Column('permission', EnumNotePermission)
+    permission = Column('permission', Enum(NotePermissionEnum, name='enum_Notes_permission'), default='editable')
     last_change_user_id = Column('lastchangeuserId', ForeignKey('Users.id'))
     last_change_at = Column('lastchangeAt', Time)
     # authorship = Column('authorship', Text)
