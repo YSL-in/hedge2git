@@ -24,7 +24,7 @@ import _helpers
     help='Push changes.',
 )
 @click.option(
-    '--push-type', 'push', metavar='PUSH_TYPE',
+    '--push-type', '--upload-type', metavar='PUSH_TYPE',
     type=click.Choice(['append', 'overwrite'], case_sensitive=False),
     default='append', show_default=True,
     help='Choose the pushing type: append, overwrite.',

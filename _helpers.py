@@ -81,24 +81,26 @@ def push(pull_type: str, comment: str, dry_run: bool) -> None:
     git_notes.sort()
 
     # collect local notes (without writing them)
+    def gen_rel_path(note: Note):
+        return Path(os.path.sep.join(note.tags)) / f'{note.title}.md'
+
     local_notes = []
     for note in hedgedoc.get_notes(owner=hedgedoc.get_current_user()):
         if not note.title or not note.content:  # type: ignore
             continue
-
-        rel_path = Path(os.path.sep.join(note.tags)) / f'{note.title}.md'
-        local_notes.append(rel_path)
-    local_notes.sort()
+        local_notes.append(note)
+    local_notes.sort(key=gen_rel_path)
 
     # compare notes
     i = j = 0
-    new_notes: list[Path] = []  # notes to be uploaded to the remote
+    new_notes: list[Note] = []  # notes to be uploaded to the remote
     deprecated_notes: list[Path] = []  # notes to be removed from the remote
     while i < len(git_notes) and j < len(local_notes):
-        if git_notes[i] < local_notes[j]:
+        local_note = gen_rel_path(local_notes[j])
+        if git_notes[i] < local_note:
             deprecated_notes.append(git_notes[i])
             i += 1
-        elif git_notes[i] > local_notes[j]:
+        elif git_notes[i] > local_note:
             new_notes.append(local_notes[j])
             j += 1
         else:
@@ -115,11 +117,11 @@ def push(pull_type: str, comment: str, dry_run: bool) -> None:
 
     # sync notes
     print('Uploading notes...')
-    for rel_path in new_notes:
-        path = git_helper.repo_path / rel_path
-        alias = Note.get_alias(content=path.read_text())
-        print(f'\t{path.stem} ({alias})')
+    for note in new_notes:
+        alias = Note.get_alias(content=note.content)  # type: ignore
+        print(f'\t{note.title} ({alias})')
         if not dry_run:
+            path = git_helper.repo_path / gen_rel_path(note)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(str(note.content), encoding='utf-8')
 
@@ -133,5 +135,5 @@ def push(pull_type: str, comment: str, dry_run: bool) -> None:
                 path.unlink()
 
     if not dry_run:
-        notes = list(map(str, new_notes + deprecated_notes))
+        notes = list(str(path) for path in [*map(gen_rel_path, new_notes), *deprecated_notes])
         git_helper.push(comment, notes, force=True)
