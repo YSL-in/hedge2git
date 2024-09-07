@@ -38,8 +38,8 @@ def pull(pull_type: str, dry_run: bool) -> None:
 
     # compare notes
     i = j = 0
-    new_notes: list[Path] = []
-    deprecated_notes: list[Note] = []
+    new_notes: list[Path] = []  # notes to be created in the database
+    deprecated_notes: list[Note] = []  # notes to be deleted in the database
     while i < len(git_notes) and j < len(hedgedoc_notes):
         hedgedoc_note = gen_path(hedgedoc_notes[j])
         if git_notes[i] < hedgedoc_note:
@@ -68,27 +68,70 @@ def pull(pull_type: str, dry_run: bool) -> None:
         hedgedoc.refresh_alias(deprecated_notes, dry_run)
 
 
-def push(comment: str | None, dry_run: bool) -> None:
+def push(pull_type: str, comment: str, dry_run: bool) -> None:
     """Apply changes from Hedgedoc to the Git repository."""
-    if comment is None:
-        return
-
     git_helper.pull()
     hedgedoc.refresh_alias(dry_run=dry_run)
 
-    notes = []
-    print('Uploading notes...')
+    # fetch remote notes
+    git_notes = []
+    for path in git_helper.repo_path.rglob('*.md'):
+        rel_path = path.relative_to(git_helper.repo_path)
+        git_notes.append(rel_path)
+    git_notes.sort()
+
+    # collect local notes (without writing them)
+    local_notes = []
     for note in hedgedoc.get_notes(owner=hedgedoc.get_current_user()):
         if not note.title or not note.content:  # type: ignore
             continue
 
-        base_path = Path(os.path.sep.join(note.tags)) / f'{note.title}.md'
-        notes.append(base_path)
+        rel_path = Path(os.path.sep.join(note.tags)) / f'{note.title}.md'
+        local_notes.append(rel_path)
+    local_notes.sort()
 
-        print(f'\t{note.title} ({note.alias})')
+    # compare notes
+    i = j = 0
+    new_notes: list[Path] = []  # notes to be uploaded to the remote
+    deprecated_notes: list[Path] = []  # notes to be removed from the remote
+    while i < len(git_notes) and j < len(local_notes):
+        if git_notes[i] < local_notes[j]:
+            deprecated_notes.append(git_notes[i])
+            i += 1
+        elif git_notes[i] > local_notes[j]:
+            new_notes.append(local_notes[j])
+            j += 1
+        else:
+            i += 1
+            j += 1
+
+    while i < len(git_notes):
+        deprecated_notes.append(git_notes[i])
+        i += 1
+
+    while j < len(local_notes):
+        new_notes.append(local_notes[j])
+        j += 1
+
+    # sync notes
+    print('Uploading notes...')
+    for rel_path in new_notes:
+        path = git_helper.repo_path / rel_path
+        alias = Note.get_alias(content=path.read_text())
+        print(f'\t{path.stem} ({alias})')
         if not dry_run:
-            abs_path = git_helper.repo_path / base_path
-            abs_path.parent.mkdir(parents=True, exist_ok=True)
-            abs_path.write_text(str(note.content), encoding='utf-8')
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(str(note.content), encoding='utf-8')
 
-    git_helper.push(comment, notes, force=True)
+    if pull_type == 'overwrite':
+        print('Removing notes remotely...')
+        for rel_path in deprecated_notes:
+            path = git_helper.repo_path / rel_path
+            alias = Note.get_alias(content=path.read_text())
+            print(f'\t{path.stem} ({alias})')
+            if not dry_run:
+                path.unlink()
+
+    if not dry_run:
+        notes = list(map(str, new_notes + deprecated_notes))
+        git_helper.push(comment, notes, force=True)

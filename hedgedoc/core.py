@@ -114,7 +114,7 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
     def refresh_alias(self, notes: list[Note] | None = None, dry_run: bool = False):
         """Re-alias notes based on their tags and title."""
         notes = notes or self.get_notes()
-        print('Re-aliasing notes...')
+        print('Re-aliasing notes... (which will affect the currently viewing notes)')
         for note in notes:
             alias = Note.get_alias(title=note.title, tags=note.tags)
             if alias == note.alias:
