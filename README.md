@@ -42,6 +42,14 @@ Usage
 
 - Make a copy of *.env.example* and name it as *.env*.
 - Fill in all the blanks and modify the pre-filled based on your case.
+  - `DB_TYPE` specifies the database management system type. Postgres is currently the only one tested.
+  - `DB_USER` and `DB_PASS` are the credentials to access the database `DB_NAME` on the host `DB_HOST`
+    at the port `DB_PORT`. There are limited APIs provided by the Hedgedoc, and thus some actions need to be done
+    via DB operations.
+  - `HEDGEDOC_USER` and `HEDGEDOC_PASS` are the credentials to access the Hedgedoc server at `HEDGEDOC_SERVER`.
+  - `GIT_REPO` is the git repository to store the Hedgedoc notes.
+  - `GIT_REF` is the git branch to store the Hedgedoc notes.
+  - `GIT_USER` and `GIT_EMAIL` are used in commits to store the Hedgedoc notes.
 
 ```bash
 pipenv install

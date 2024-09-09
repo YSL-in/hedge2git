@@ -42,8 +42,8 @@ class HedgedocAPI:
         self.server = httpx.URL(configs['HEDGEDOC_SERVER'])
         self.client = httpx.Client()
         self.client.post(self.server.join('login'), data={
-            'email': configs['HEDGEDOC_USER_EMAIL'],
-            'password': configs['HEDGEDOC_USER_PASSWORD'],
+            'email': configs['HEDGEDOC_USER'],
+            'password': configs['HEDGEDOC_PASS'],
         })
 
     def GET(self, api: str) -> httpx.Response:
@@ -107,9 +107,9 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
         return self.session.query(User).all()
 
     def get_current_user(self) -> User:
-        if configs['HEDGEDOC_USER_EMAIL'] is None:
-            exit_with_error('HEDGEDOC_USER_EMAIL is not set')
-        return self.session.query(User).filter(User.email == configs['HEDGEDOC_USER_EMAIL']).first()  # type: ignore
+        if configs['HEDGEDOC_USER'] is None:
+            exit_with_error('HEDGEDOC_USER is not set')
+        return self.session.query(User).filter(User.email == configs['HEDGEDOC_USER']).first()  # type: ignore
 
     def refresh_alias(self, notes: list[Note] | None = None, dry_run: bool = False):
         """Re-alias notes based on their tags and title."""
