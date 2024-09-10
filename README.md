@@ -37,6 +37,10 @@ tags:
 ###### tags: `TAG1` `TAG2` `TAG3`
 ```
 
+A note alias is not only used in the url to reference the note but as a unique identifier to each of it.
+The expected format is `TAG1--TAG2--...--TITLE`.
+However, Hedgedoc creates a note without it and sometimes tags are changed, and that's where re-aliasing comes in.
+
 Usage
 ---
 
@@ -64,3 +68,8 @@ pipenv run python hedge2git --push --push-type=overwrite --dry-run
 pipenv run python hedge2git --pull
 pipenv run python hedge2git --pull --pull-type=overwrite --dry-run
 ```
+
+- `--push` calculates the difference from the remote to the local and pushes (or uploads) the newly created notes
+  to the remote. Switch `--push-type=overwrite` to remove the ones deleted from (or simply not exists in) the local.
+- `--pull` calculates the difference from the local to the remote and pulls (or downloads) the newly added notes
+  to the local. Switch `--pull-type=overwrite` to remove the ones deleted from (or simply not exists in) the remote.
