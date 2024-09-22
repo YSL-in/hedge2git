@@ -17,7 +17,7 @@ def validate(**actions: str | bool | None) -> None:
         exit_with_error("Got both 'pull' and 'push'")
 
 
-def pull(pull_type: str, dry_run: bool) -> None:
+def pull(*, overwrite: bool, dry_run: bool) -> None:
     """Update Hedgedoc notes from the Git repository."""
     git_helper.pull()
 
@@ -62,13 +62,13 @@ def pull(pull_type: str, dry_run: bool) -> None:
 
     # sync notes
     create_notes(new_notes, dry_run)
-    if pull_type == 'overwrite':
+    if overwrite:
         delete_notes(deprecated_notes, dry_run)
     else:
         hedgedoc.refresh_alias(deprecated_notes, dry_run)
 
 
-def push(pull_type: str, comment: str, dry_run: bool) -> None:
+def push(comment: str, *, overwrite: bool, dry_run: bool) -> None:
     """Apply changes from Hedgedoc to the Git repository."""
     git_helper.pull()
     hedgedoc.refresh_alias(dry_run=dry_run)
@@ -125,7 +125,7 @@ def push(pull_type: str, comment: str, dry_run: bool) -> None:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(str(note.content), encoding='utf-8')
 
-    if pull_type == 'overwrite':
+    if overwrite:
         print('Removing notes remotely...')
         for rel_path in deprecated_notes:
             path = git_helper.repo_path / rel_path
