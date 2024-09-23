@@ -2,6 +2,7 @@ import json
 import os.path
 from pathlib import Path
 
+from configs import configs
 from git_helper import git_helper
 from hedgedoc import Note, create_notes, delete_notes, hedgedoc
 from utils import exit_with_error
@@ -24,6 +25,8 @@ def pull(*, overwrite: bool, dry_run: bool) -> None:
     # fetch remote notes
     git_notes = []
     for path in git_helper.repo_path.rglob('*.md'):
+        if set(configs['NOTE__IGNORED_TAGS']).intersection(Note.get_tags(path.read_text(encoding='utf-8'))):
+            continue
         git_notes.append(path)
     git_notes.sort()
 
@@ -129,7 +132,7 @@ def push(comment: str, *, overwrite: bool, dry_run: bool) -> None:
         print('Removing notes remotely...')
         for rel_path in deprecated_notes:
             path = git_helper.repo_path / rel_path
-            alias = Note.get_alias(content=path.read_text())
+            alias = Note.get_alias(content=path.read_text(encoding='utf-8'))
             print(f'\t{path.stem} ({alias})')
             if not dry_run:
                 path.unlink()
