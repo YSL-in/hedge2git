@@ -15,8 +15,7 @@ def create_notes(paths: list[pathlib.Path], dry_run: bool) -> None:
             hedgedoc.add_note(title=path.stem, content=content, alias=alias)
 
     if not dry_run:
-        current_user = hedgedoc.get_current_user()
-        hedgedoc.refresh_history(new_notes=hedgedoc.get_notes(owner=current_user))
+        hedgedoc.refresh_history()
 
 
 def delete_notes(notes: list[Note], dry_run: bool) -> None:

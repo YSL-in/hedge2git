@@ -3,6 +3,7 @@ from datetime import datetime
 import click
 
 import _helpers
+from hedgedoc.core import hedgedoc
 
 
 @click.command()
@@ -24,6 +25,11 @@ import _helpers
     help='Push changes.',
 )
 @click.option(
+    '--refresh-history', 'refresh_history',
+    is_flag=True, default=False, show_default=True,
+    help='Refresh the browsing history.',
+)
+@click.option(
     '--overwrite', 'overwrite',
     is_flag=True, default=False, show_default=True,
     help='Remove unexisting notes during --pull/--push',
@@ -43,6 +49,9 @@ def hedge2git(**actions: str | bool):
 
     if (comment := actions['push']) is not None:
         _helpers.push(comment, overwrite=actions['overwrite'], dry_run=actions['dry_run'])  # type: ignore
+
+    if actions['refresh_history']:
+        hedgedoc.refresh_history()
 
 
 if __name__ == '__main__':

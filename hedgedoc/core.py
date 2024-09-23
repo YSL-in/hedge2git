@@ -129,17 +129,16 @@ class Hedgedoc(HedgedocAPI, HedgedocStore):
         if not dry_run:
             self.refresh_history()
 
-    def refresh_history(self, new_notes: list[Note] | None = None) -> None:
+    def refresh_history(self, history: t.Iterable[dict] | None = None) -> None:
         """Refresh the browsing history based on the database."""
-        history = [] if new_notes else self.get_history()
-        history += [
+        history = history or [
             {
                 'id': self.get_ref_id(note),
                 'text': note.title,
                 'time': int(datetime.now().timestamp()),
                 'tags': note.tags,
             }
-            for note in (new_notes or self.get_notes())
+            for note in self.get_notes()
         ]
         resp = self.POST(
             'history',
