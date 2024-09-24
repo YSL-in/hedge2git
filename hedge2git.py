@@ -25,14 +25,19 @@ from hedgedoc.core import hedgedoc
     help='Push changes.',
 )
 @click.option(
+    '--overwrite', 'overwrite',
+    is_flag=True, default=False, show_default=True,
+    help='Remove unexisting notes during --pull/--push',
+)
+@click.option(
     '--refresh-history', 'refresh_history',
     is_flag=True, default=False, show_default=True,
     help='Refresh the browsing history.',
 )
 @click.option(
-    '--overwrite', 'overwrite',
+    '--refresh-alias', 'refresh_alias',
     is_flag=True, default=False, show_default=True,
-    help='Remove unexisting notes during --pull/--push',
+    help='Refresh the alias of each note based on the tags.',
 )
 @click.option(
     '--dry-run', 'dry_run', is_flag=True,
@@ -52,6 +57,8 @@ def hedge2git(**actions: str | bool):
 
     if actions['refresh_history']:
         hedgedoc.refresh_history()
+    if actions['refresh_alias']:
+        hedgedoc.refresh_alias()  # type: ignore
 
 
 if __name__ == '__main__':
