@@ -25,7 +25,7 @@ def pull(*, overwrite: bool, dry_run: bool) -> None:
     # fetch remote notes
     git_notes = []
     for path in git_helper.repo_path.rglob('*.md'):
-        if set(configs['NOTE__IGNORED_TAGS']).intersection(Note.get_tags(path.read_text(encoding='utf-8'))):
+        if set(configs['NOTE__DO_NOT_PULL']).intersection(Note.get_tags(path.read_text(encoding='utf-8'))):
             continue
         git_notes.append(path)
     git_notes.sort()
@@ -90,6 +90,8 @@ def push(comment: str, *, overwrite: bool, dry_run: bool) -> None:
     local_notes = []
     for note in hedgedoc.get_notes(owner=hedgedoc.get_current_user()):
         if not note.title or not note.content:  # type: ignore
+            continue
+        if set(configs['NOTE__DO_NOT_PUSH']).intersection(Note.get_tags(note.content)):  # type: ignore
             continue
         local_notes.append(note)
     local_notes.sort(key=gen_rel_path)

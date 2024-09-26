@@ -17,4 +17,5 @@ if sync_path.exists():
     shutil.move(sync_path, bak_path)
     sync_path.mkdir()
 
-configs['NOTE__IGNORED_TAGS'] = configs['NOTE__IGNORED_TAGS'].split(',')
+configs['NOTE__DO_NOT_PULL'] = configs['NOTE__DO_NOT_PULL'].split(',')
+configs['NOTE__DO_NOT_PUSH'] = configs['NOTE__DO_NOT_PUSH'].split(',')
